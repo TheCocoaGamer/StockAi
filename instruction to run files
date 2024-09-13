@@ -1,0 +1,10 @@
+To run the train_model.py file using the following command:
+
+python train_model.py finalData.csv --model_filepath lstm_model.h5 --scaler_x_filepath scaler_x.pkl --power_transformer_x_filepath power_transformer_x.pkl --poly_filepath poly.pkl --scaler_y_filepath scaler_y.pkl
+
+To run the predict_model.py file using the following command:
+
+python predict_model.py lstm_model.h5 scaler_x.pkl power_transformer_x.pkl poly.pkl scaler_y.pkl 225.828
+
+
+
