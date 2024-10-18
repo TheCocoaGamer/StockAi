@@ -4,11 +4,8 @@ import numpy as np
 import pickle
 import argparse
 import tensorflow
-import keras
 from tensorflow.keras.models import load_model
 import os
-from keras.models import load_model
-from sklearn.preprocessing import StandardScaler
 import joblib
 
 def load_scaler(filepath):
@@ -41,6 +38,7 @@ def make_inference(model_path, scaler_x_path, power_transformer_x_path, poly_pat
     new_x_normalized = scaler_x.transform(new_x.reshape(-1, 1))  # Reshape new_x
     new_x_transformed = power_transformer_x.transform(new_x_normalized)
     new_x_poly = poly.transform(new_x_transformed)
+    new_x_poly = new_x_poly.reshape((new_x_poly.shape[0], 1, new_x_poly.shape[1]))  # Reshape for LSTM
 
     predicted_y_normalized = model.predict(new_x_poly)
     predicted_y = scaler_y.inverse_transform(predicted_y_normalized)
