@@ -2,15 +2,29 @@ import os
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 import numpy as np
 import tensorflow as tf
+import keras
 from tensorflow.keras import layers, models, optimizers
+from keras.models import Sequential
+from keras.layers import LSTM, Dense, Input
 from sklearn.preprocessing import MinMaxScaler, PolynomialFeatures, PowerTransformer
 import matplotlib.pyplot as plt
 import pickle
 import argparse
 import pandas as pd
-from tensorflow.keras.losses import MeanSquaredError
-def process_and_train(data_path, model_filepath, scaler_x_filepath, power_transformer_x_filepath, poly_filepath, scaler_y_filepath):
-    # Load data
+#from tensorflow.keras.losses import MeanSquaredError
+
+def create_model(input_shape):
+    model = Sequential()
+    model.add(Input(shape=(input_shape, 1)))  # Update input shape to (timesteps, features)
+    model.add(LSTM(50, return_sequences=True))
+    model.add(LSTM(50))
+    model.add(Dense(1))
+    model.compile(optimizer='adam', loss='mean_squared_error')
+    return model
+
+
+def process_and_train(epochs, data_path, model_filepath, scaler_x_filepath, power_transformer_x_filepath, poly_filepath, scaler_y_filepath):
+    # Load the data
     data = pd.read_csv(data_path)
     x = np.array(data['x']).reshape(-1, 1)
     y = np.array(data['y'])
@@ -49,28 +63,24 @@ def process_and_train(data_path, model_filepath, scaler_x_filepath, power_transf
         pickle.dump(scaler_y, file)
     print("Preprocessing objects saved.")
 
+    model = create_model(1)
+    
     # Model building
-    model = models.Sequential([
-        layers.LSTM(50, return_sequences=True, input_shape=(x_lstm.shape[1], 1)),  # First LSTM layer
-        layers.LSTM(20, return_sequences=False),  # Second LSTM layer
-        layers.Dense(10, activation='relu'),
-        layers.Dense(1)  # Output layer
-    ])
+    #model = models.Sequential([
+    #    layers.LSTM(50, return_sequences=True, input_shape=(x_lstm.shape[1], 1)),  # First LSTM layer
+    #    layers.LSTM(20, return_sequences=False),  # Second LSTM layer
+    #    layers.Dense(10, activation='relu'),
+    #    layers.Dense(1)  # Output layer
+    #])
 
-    # Optimizer with learning rate
-    optimizer = optimizers.Adam(learning_rate=0.001)
-
-    # Model compilation
-    model.compile(optimizer=optimizer, loss=MeanSquaredError())
+    model.save('Python/My Programs/Bot1/lstm_model.keras')
 
     # Training the model
     print('Training...')
-    model.fit(
-        x_lstm, 
-        y_transformed, 
-        epochs=2500, 
-        batch_size=128
-    )
+    input_shape = x_lstm.shape[1]  # Update input shape
+    model = create_model(input_shape)
+    model.fit(x_lstm, y_transformed, epochs=epochs, batch_size=32, validation_split=0.2)
+    model.save(model_filepath)
     print("Model trained.")
 
     # Save the Keras model
@@ -81,18 +91,9 @@ def process_and_train(data_path, model_filepath, scaler_x_filepath, power_transf
     y_pred_transformed = model.predict(x_lstm)
     y_pred = scaler_y.inverse_transform(y_pred_transformed)  # Transform predictions back to original scale
 
-    # Plotting the results
-    plt.figure(figsize=(10, 5))
-    plt.scatter(x, y, color='blue', label='Actual')
-    plt.scatter(x, y_pred.flatten(), color='red', label='Predicted')
-    plt.title('Comparison of Actual and Predicted Values')
-    plt.xlabel('X values')
-    plt.ylabel('Y values')
-    plt.legend()
-    plt.show()
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Train an LSTM model on provided data")
+    parser.add_argument('epochs', type=int, help='Epoch amount for training')
     parser.add_argument('data_path', type=str, help='Path to the CSV data file')
     parser.add_argument('--model_filepath', type=str, default='lstm_model.h5', help='Path to save the trained LSTM model')
     parser.add_argument('--scaler_x_filepath', type=str, default='scaler_x.pkl', help='Path to save the X scaler object')
@@ -100,6 +101,5 @@ if __name__ == '__main__':
     parser.add_argument('--poly_filepath', type=str, default='poly.pkl', help='Path to save the polynomial features object')
     parser.add_argument('--scaler_y_filepath', type=str, default='scaler_y.pkl', help='Path to save the Y scaler object')
     args = parser.parse_args()
-
-    process_and_train(args.data_path, args.model_filepath, args.scaler_x_filepath, args.power_transformer_x_filepath, args.poly_filepath, args.scaler_y_filepath)
+    process_and_train(args.epochs, args.data_path, args.model_filepath, args.scaler_x_filepath, args.power_transformer_x_filepath, args.poly_filepath, args.scaler_y_filepath)
 
